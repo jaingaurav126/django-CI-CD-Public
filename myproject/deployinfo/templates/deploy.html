@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deploying Django on AWS EC2 with CI/CD</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans leading-relaxed">
+  <header class="bg-indigo-600 text-white p-6 shadow">
+    <h1 class="text-3xl font-bold">🚀 Deploying Django Projects on AWS EC2 with CI/CD</h1>
+    <p class="mt-2 text-indigo-200">A smooth, automated deployment workflow using GitHub Actions</p>
+  </header>
+
+  <main class="max-w-4xl mx-auto mt-10 bg-white p-8 rounded-xl shadow">
+    <h2 class="text-2xl font-semibold mb-4">Overview</h2>
+    <p class="mb-6">
+      This guide demonstrates how to deploy Django applications to an AWS EC2 instance using a Continuous Integration and Continuous Deployment (CI/CD) pipeline powered by GitHub Actions.
+    </p>
+
+    <h3 class="text-xl font-semibold mb-2">🔧 Tools Used:</h3>
+    <ul class="list-disc list-inside mb-6 text-gray-700">
+      <li>Django (Web Framework)</li>
+      <li>AWS EC2 (Deployment Server)</li>
+      <li>GitHub Actions (CI/CD Pipeline)</li>
+      <li>Gunicorn + Nginx (Production Server Stack)</li>
+    </ul>
+
+    <h3 class="text-xl font-semibold mb-2">🛠️ Key Workflow Steps:</h3>
+    <ol class="list-decimal list-inside mb-6 text-gray-700">
+      <li>Push code to GitHub</li>
+      <li>GitHub Actions triggers the deployment workflow</li>
+      <li>Secure SSH access is used to connect to EC2</li>
+      <li>Latest code is pulled, and the server is restarted</li>
+    </ol>
+
+    <h3 class="text-xl font-semibold mb-2">📁 Example Folder Structure:</h3>
+    <pre class="bg-gray-100 p-4 rounded text-sm overflow-x-auto mb-6">
+myproject/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml
+├── manage.py
+├── requirements.txt
+├── myapp/
+└── ...
+    </pre>
+
+    <h3 class="text-xl font-semibold mb-2">✅ Deployment Status:</h3>
+    <p class="p-4 bg-green-100 text-green-800 font-medium rounded">
+      Last deployment: <strong>Success</strong> — Automatically triggered on push to <code>main</code>
+    </p>
+  </main>
+
+  <footer class="text-center mt-10 text-sm text-gray-500 mb-6">
+    &copy; {{ year }} YourCompany. Built with ❤️ using Django + GitHub Actions + AWS.
+  </footer>
+</body>
+</html>

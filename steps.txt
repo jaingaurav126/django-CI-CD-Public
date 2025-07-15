@@ -1,0 +1,211 @@
+Deploying Django Projects on AWS EC2 with CI/CD
+
+Local Setup
+python3 -m venv venv
+source venv/bin/activate
+pip install django gunicorn
+django-admin startproject myproject
+cd myproject
+
+Update settings.py
+
+import os
+
+DEBUG = False
+ALLOWED_HOSTS = ['*']  # Later replace with EC2 IP or domain
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MIDDLEWARE = [
+    # Add this near the top
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    ...
+]
+
+Create .gitignore
+
+venv/
+__pycache__/
+*.pyc
+*.sqlite3
+.env
+staticfiles/
+
+Fix: Generate a New SSH Key Pair (Recommended)
+ssh-keygen -t ed25519 -f ~/.ssh/deploy_key_github -C "ec2-deploy-key-2"
+(Leave the passphrase blank)
+
+cat ~/.ssh/deploy_key_github.pub
+nano ~/.ssh/config
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/deploy_key_github
+  IdentitiesOnly yes
+
+
+Add to GitHub as a Deploy Key
+Go to your GitHub repo → Settings → Deploy Keys
+
+Click Add Deploy Key
+
+Title: EC2 Deploy Key
+
+Key: Paste the public key
+
+✅ Check Allow write access if EC2 will push too (optional)
+
+Clone with SSH instead of HTTPS
+git clone git@github.com:jaingaurav126/django-CI-CD.git
+
+ssh -T git@github.com
+
+
+sudo nano /etc/nginx/conf.d/myproject.conf
+server {
+    listen 80;
+    server_name YOUR_EC2_PUBLIC_IP;
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+    }
+
+    location /static/ {
+        root /home/ec2-user/myproject/django-CI-CD;
+    }
+
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://unix:/run/gunicorn/gunicorn.sock;
+    }
+}
+
+
+
+
+sudo nginx -t
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+
+Make sure your myproject.service (in /etc/systemd/system/myproject.service) looks something like this:
+[Unit]
+Description=Gunicorn daemon for Django app
+After=network.target
+
+[Service]
+User=ec2-user
+Group=nginx
+WorkingDirectory=/home/ec2-user/myproject/django-CI-CD
+ExecStart=/home/ec2-user/myproject/venv/bin/gunicorn \
+    --access-logfile - \
+    --workers 1 \
+    --bind unix:/run/gunicorn/gunicorn.sock \
+    myproject.wsgi:application
+RuntimeDirectory=gunicorn
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target
+
+
+sudo systemctl daemon-reload
+sudo systemctl restart myproject
+sudo systemctl status myproject
+sudo systemctl restart nginx
+
+
+Now on your local create 
+.github/workflows/deploy.yml
+
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment on push to main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ec2-user@3.86.32.84 << 'EOF'
+            cd /home/ec2-user/myproject/django-CI-CD
+            git pull origin main
+            source ../venv/bin/activate
+            pip install -r requirements.txt
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            sudo systemctl restart myproject
+            sudo systemctl restart nginx
+          EOF
+
+
+git branch -m main if its not a main branch from your local
+if required
+git remote set-url origin https://github.com/jaingaurav126/django-CI-CD-Private.git
+
+git add .
+git commit -m "Test CI/CD from Windows"
+git push origin main
+
+Note : incae you come across issues while pushing teh code to the repo do git pull origin main --rebase
+and then do git push origin main
+
+Note : feel free to use these commands also git rebase --continue
+git push origin main
+
+
+
+
+🔐 1. Generate a New SSH Key Pair (Without Passphrase)
+ssh-keygen -t ed25519 -f deploy_key_github_actions -C "GitHub Actions Deploy Key"
+
+This creates two files:
+
+deploy_key_github_actions (private key)
+
+deploy_key_github_actions.pub (public key)
+
+🔁 2. Add the Public Key to Your EC2 Server
+On your EC2 server:
+
+Open the public key (deploy_key_github_actions.pub)
+
+Add its contents to your EC2’s ~/.ssh/authorized_keys:
+nano ~/.ssh/authorized_keys
+# Paste it at the bottom
+
+chmod 600 ~/.ssh/authorized_keys
+chmod 700 ~/.ssh
+
+
+🔐 3. Add the Private Key to GitHub Secrets
+In your GitHub repo:
+
+Go to Settings → Secrets and variables → Actions
+
+Click New repository secret
+
+Name it: EC2_SSH_KEY
+
+Paste in the full contents of deploy_key_github_actions (private key)
+
+Note: fr looging into your EC2 server now you may use the private key generated through above command on windows / other server you are using as local
+
+
+

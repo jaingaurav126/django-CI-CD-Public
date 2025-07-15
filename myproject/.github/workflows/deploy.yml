@@ -1,0 +1,52 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # Trigger deployment on push to main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ec2-user@3.86.32.84 << 'EOF'
+            set -e  # Exit immediately if a command fails
+
+            cd /home/ec2-user/myproject/django-CI-CD
+
+            echo "Resetting local changes..."
+            git reset --hard
+            git clean -fd
+
+            echo "Pulling latest code from GitHub..."
+            git pull origin main
+
+            echo "Activating virtual environment..."
+            source ../venv/bin/activate
+
+            echo "Installing dependencies..."
+            pip install -r requirements.txt
+
+            echo "Running migrations..."
+            python manage.py migrate --noinput
+
+            echo "Collecting static files..."
+            python manage.py collectstatic --noinput
+
+            echo "Restarting services..."
+            sudo systemctl restart myproject
+            sudo systemctl restart nginx
+
+            echo "✅ Deployment complete."
+          EOF
