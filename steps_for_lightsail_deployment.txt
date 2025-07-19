@@ -1,0 +1,172 @@
+🧭 Step-by-Step: Deploying Django on AWS Lightsail
+
+1. Set Up AWS Lightsail Instance
+Go to https://lightsail.aws.amazon.com
+
+Click Create Instance
+
+Platform: Linux/Unix
+
+Blueprint: Ubuntu (latest LTS)
+
+Choose instance plan (start with the $3.50/month one for testing)
+
+Name your instance and click Create
+
+2. Connect to Your Instance
+Click the terminal icon to SSH into the instance directly from your browser.
+
+
+3. Install Dependencies
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3-pip python3-dev libpq-dev nginx curl git -y
+sudo apt install python3-venv -y
+
+4. Clone Your Django App
+cd ~
+git clone https://github.com/yourusername/your-django-app.git
+cd your-django-app
+
+5. Create and Activate Virtual Environment
+python3 -m venv venv
+source venv/bin/activate
+
+6. Install Python Requirements
+pip install --upgrade pip
+pip install -r requirements.txt
+
+7. Configure Django Settings
+In settings.py:
+Add your public IP or domain to ALLOWED_HOSTS:
+
+ALLOWED_HOSTS = ['YOUR_PUBLIC_IP', 'YOUR_DOMAIN.com']
+
+For static files:
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
+8. Collect Static Files
+python manage.py collectstatic
+
+9. Run Migrations and Create Superuser
+python manage.py migrate
+python manage.py createsuperuser
+
+10. Install and Configure Gunicorn
+pip install gunicorn
+gunicorn --workers 3 --bind 0.0.0.0:8000 yourproject.wsgi:application
+
+
+Test if the app is working by visiting http://YOUR_PUBLIC_IP:8000
+You're getting the ERR_CONNECTION_TIMED_OUT error on your AWS Lightsail Django app at http://IP_ADDR:8000/ 
+even though Gunicorn is running fine. This typically means that the server is running, but port 8000 is blocked from external access.
+
+✅ Root Cause
+AWS Lightsail instances block all ports except 22, 80, and 443 by default. Port 8000 is not open, so external clients can't reach your app.
+
+🛠️ Fix: Open Port 8000 in AWS Lightsail
+Step 1: Open Port 8000 in the Lightsail Networking Dashboard
+Go to AWS Lightsail Console
+
+Click your instance.
+
+Go to the Networking tab.
+
+Scroll to Firewall.
+
+Click Add another.
+
+Application: Custom
+
+Port range: 8000
+
+Protocol: TCP
+
+Source type: Anywhere (or your IP for restricted access)
+
+Click Save
+This allows external traffic to access your instance on port 8000
+
+RERUN gunicorn --workers 3 --bind 0.0.0.0:8000 myproject.wsgi:application
+
+11. Create Systemd Service for Gunicorn
+sudo nano /etc/systemd/system/gunicorn.service
+
+Add this:
+[Unit]
+Description=Gunicorn daemon for Django project
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/django-CI-CD-Public/myproject
+ExecStart=/home/ubuntu/django-CI-CD-Public/myproject/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/home/ubuntu/django-CI-CD-Public/myproject/gunicorn.sock myproject.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn
+sudo systemctl status gunicorn
+
+
+
+12. Configure Nginx
+
+sudo nano /etc/nginx/sites-available/myproject
+
+
+Add this:
+
+server {
+    listen 80;
+    server_name 13.200.254.86;
+
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    
+    location /static/ {
+        alias /home/ubuntu/django-CI-CD-Public/myproject/static/;
+       }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/home/ubuntu/django-CI-CD-Public/myproject/gunicorn.sock;
+    }
+}
+
+
+sudo ln -s /etc/nginx/sites-available/myproject /etc/nginx/sites-enabled
+sudo nginx -t
+sudo systemctl restart nginx
+
+13. Allow HTTP Traffic in Firewall(not required)
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+
+sudo ufw allow 8000
+sudo ufw status
+
+# Allow execute access for www-data on all parent folders
+sudo chmod o+x /home
+sudo chmod o+x /home/ubuntu
+sudo chmod o+x /home/ubuntu/django-CI-CD-Public
+sudo chmod o+x /home/ubuntu/django-CI-CD-Public/myproject
+
+# Give ownership to ubuntu and www-data group
+sudo chown ubuntu:www-data /home/ubuntu/django-CI-CD-Public/myproject/gunicorn.sock
+
+# Allow read/write for owner and group
+sudo chmod 770 /home/ubuntu/django-CI-CD-Public/myproject/gunicorn.sock
+
+
+
+Check nginx error logs after restarting:
+sudo tail -n 20 /var/log/nginx/error.log
+
+
+
