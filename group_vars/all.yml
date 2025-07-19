@@ -1,0 +1,18 @@
+# General App Configuration
+app_name: myproject
+repo_url: "https://github.com/jaingaurav126/django-ansible-deployment.git"
+
+# Deployment Paths
+project_dir: /home/ubuntu/{{ app_name }}
+venv_dir: /home/ubuntu/{{ app_name }}/venv
+
+# Gunicorn & Nginx/home/ubuntu/myproject/gunicorn.sock
+gunicorn_socket: /home/ubuntu/{{ app_name }}/gunicorn.sock
+domain_name: 44.212.7.176  # Use your public IP or domain
+
+# Database Configuration (optional – only if you're using a DB)
+use_postgres: false  # Set to true if you switch to PostgreSQL
+db_name: "{{ app_name }}"
+db_user: "{{ app_name }}_user"
+db_password: "secure-password"
+db_host: "localhost"

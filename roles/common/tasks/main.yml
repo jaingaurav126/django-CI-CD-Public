@@ -1,0 +1,21 @@
+- name: Update system packages on Amazon Linux
+  dnf:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+
+- name: Install dependencies with DNF
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - python3-pip
+    - python3-virtualenv
+    - git
+    - nginx
+    - gcc
+    - python3-devel
+   
+
+

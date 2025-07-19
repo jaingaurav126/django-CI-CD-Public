@@ -1,0 +1,26 @@
+---
+- name: Clone the Django app
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ project_dir }}"
+    version: main
+
+- name: Create virtual environment
+  command: python3 -m venv {{ venv_dir }}
+  args:
+    creates: "{{ venv_dir }}"
+
+- name: Install Python requirements
+  pip:
+    requirements: "{{ project_dir }}/requirements.txt"
+    virtualenv: "{{ venv_dir }}"
+
+- name: Run Django migrations
+  command: "{{ venv_dir }}/bin/python manage.py migrate"
+  args:
+    chdir: "{{ project_dir }}"
+
+- name: Collect static files
+  command: "{{ venv_dir }}/bin/python manage.py collectstatic --noinput"
+  args:
+    chdir: "{{ project_dir }}"

@@ -1,0 +1,22 @@
+---
+- name: Ensure base directory has proper ownership and permissions
+  file:
+    path: /home/ubuntu
+    owner: ec2-user
+    group: nginx
+    mode: '0750'
+
+- name: Ensure project directory has proper ownership and permissions
+  file:
+    path: "{{ project_dir }}"
+    owner: ec2-user
+    group: nginx
+    mode: '0750'
+
+- name: Ensure Gunicorn socket exists with correct ownership and permissions
+  file:
+    path: "{{ gunicorn_socket }}"
+    owner: ec2-user
+    group: nginx
+    mode: '0770'
+    state: touch

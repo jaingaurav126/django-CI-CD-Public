@@ -1,0 +1,48 @@
+---
+- name: Create systemd service for Gunicorn
+  copy:
+    dest: /etc/systemd/system/gunicorn.service
+    content: |
+      [Unit]
+      Description=gunicorn daemon
+      After=network.target
+
+      [Service]
+      User=ec2-user
+      Group=nginx
+      WorkingDirectory={{ project_dir }}
+      ExecStart={{ venv_dir }}/bin/gunicorn --access-logfile - --workers 3 --bind unix:{{ gunicorn_socket }} {{ app_name }}.wsgi:application
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Set ownership and permissions on /home/ubuntu
+  file:
+    path: /home/ubuntu
+    owner: ec2-user
+    group: nginx
+    mode: '0750'
+
+- name: Set ownership and permissions on project directory
+  file:
+    path: "{{ project_dir }}"
+    owner: ec2-user
+    group: nginx
+    mode: '0750'
+
+# ⚠️ DO NOT create the socket file — let Gunicorn create it itself
+# Just make sure the directory is accessible
+
+- name: Ensure parent directory allows Gunicorn to create socket
+  file:
+    path: "{{ project_dir }}"
+    owner: ec2-user
+    group: nginx
+    mode: '0770'
+
+- name: Start and enable Gunicorn
+  systemd:
+    name: gunicorn
+    enabled: yes
+    state: restarted
+    daemon_reload: yes
