@@ -1,0 +1,100 @@
+Prerequisites
+Local Machine (Control Node):
+
+Unix-based OS (Linux/macOS or WSL on Windows)
+
+Ansible installed:
+
+pip install ansible
+
+mkdir django-ansible-deploy && cd django-ansible-deploy
+
+django-ansible-deploy/
+├── ansible.cfg
+├── inventory
+├── playbook.yml
+├── group_vars/
+│   └── all.yml
+└── roles/
+    ├── common/
+    ├── django/
+    ├── nginx/
+    └── gunicorn/
+
+
+ansible-playbook -i inventory playbook.yml
+
+Incase of errors like file permission : then troubleshooting steps
+
+edit : /etc/nginx/conf.d/ myproject.conf
+sudo rm /home/ubuntu/myproject/gunicorn.sock
+
+
+sudo nginx -t
+sudo journalctl -u gunicorn -f
+sudo journalctl -u nginx -f
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn
+sudo systemctl status gunicorn
+
+Required file permissions
+sudo chown ec2-user:nginx /home/ubuntu/myproject
+sudo chmod 710 /home/ubuntu/myproject
+sudo chown ec2-user:www-data /home/ubuntu/myproject/gunicorn.sock
+sudo chmod 770 /home/ubuntu/myproject/gunicorn.sock
+# Give ownership of the socket to ec2-user and the nginx group
+sudo chown ec2-user:nginx /home/ubuntu/myproject/gunicorn.sock
+
+# Allow read/write for owner and group
+sudo chmod 770 /home/ubuntu/myproject/gunicorn.sock
+sudo chown ec2-user:nginx /home/ubuntu
+sudo chmod 750 /home/ubuntu
+
+sudo chown ec2-user:nginx /home/ubuntu/myproject
+sudo chmod 750 /home/ubuntu/myproject
+# Make sure Gunicorn creates socket with proper group
+sudo chown ec2-user:nginx /home/ubuntu/myproject/gunicorn.sock
+sudo chmod 770 /home/ubuntu/myproject/gunicorn.sock
+
+
+
+cat /etc/systemd/system/gunicorn.service
+
+
+Cklean up evertyhing
+# Stop services
+sudo systemctl stop gunicorn
+sudo systemctl stop nginx
+
+# Disable services
+sudo systemctl disable gunicorn
+sudo systemctl disable nginx
+
+# Remove gunicorn systemd file
+sudo rm -f /etc/systemd/system/gunicorn.service
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Remove app and virtualenv (be careful!)
+sudo rm -rf /home/ubuntu/myproject
+
+# Remove custom Nginx config
+sudo rm -f /etc/nginx/sites-enabled/myproject
+sudo rm -f /etc/nginx/sites-available/myproject
+sudo rm -f /etc/nginx/conf.d/myproject.conf  # if you used conf.d
+
+# Restore default (optional)
+sudo systemctl restart nginx
+
+
+
+sudo systemctl stop gunicorn && sudo systemctl stop nginx && sudo systemctl disable gunicorn && sudo systemctl disable nginx && sudo rm -f /etc/systemd/system/gunicorn.service && sudo systemctl daemon-reload && sudo rm -rf /home/ubuntu/myproject && sudo rm -f /etc/nginx/sites-enabled/myproject && sudo rm -f /etc/nginx/sites-available/myproject && sudo rm -f /etc/nginx/conf.d/myproject.conf && sudo systemctl restart nginx
+
+
+
+
+
+
+
